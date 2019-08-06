@@ -161,7 +161,7 @@ o terrain"#,
         for x in 0..width.saturating_sub(1) {
             let i = 1 + terrain.index_of(x, y);
             let j = 1 + terrain.index_of(x, y + 1);
-            writeln!(w, "f {} {} {} {}", i, j, j + 1, i + 1)?;
+            writeln!(w, "f {} {} {} {}", i, i + 1, j + 1, j)?;
         }
     }
 
