@@ -46,15 +46,25 @@ pub struct App {
 
     #[structopt(long, default_value = "0.2")]
     frequency: f32,
+
+    /// Generate the dual of terrain too.
+    #[structopt(long)]
+    dual: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Terrain {
     heights: Vec<f32>,
     width: usize,
     depth: usize,
     amplitude: f32,
-    seed: u64,
+    generator: TerrainGenerator,
+}
+
+#[derive(Debug, Clone)]
+pub enum TerrainGenerator {
+    Noise { seed: u64 },
+    Dual { parent_seed: u64 },
 }
 
 impl Terrain {
@@ -100,9 +110,27 @@ impl Terrain {
         Terrain {
             depth,
             heights,
-            seed,
             width,
             amplitude: *amplitude,
+            generator: TerrainGenerator::Noise { seed },
+        }
+    }
+
+    pub fn dual(&self) -> Terrain {
+        let heights = self
+            .positions_by_depth()
+            .map(|(y, x)| self.amplitude - self.height_at(self.width - 1 - x, y))
+            .collect::<Vec<_>>();
+
+        let generator = match self.generator {
+            TerrainGenerator::Noise { seed } => TerrainGenerator::Dual { parent_seed: seed },
+            TerrainGenerator::Dual { parent_seed } => TerrainGenerator::Noise { seed: parent_seed },
+        };
+
+        Terrain {
+            heights,
+            generator,
+            ..*self
         }
     }
 
@@ -137,8 +165,8 @@ impl Terrain {
         self.amplitude
     }
 
-    pub fn seed(&self) -> u64 {
-        self.seed
+    pub fn generator(&self) -> &TerrainGenerator {
+        &self.generator
     }
 }
 
@@ -147,8 +175,27 @@ fn main() -> io::Result<()> {
 
     let terrain = Terrain::generate(&opt);
 
-    let mut f = BufWriter::new(File::create(opt.output)?);
-    dump(&mut f, &terrain, true)
+    let mut f = BufWriter::new(File::create(&opt.output)?);
+    dump(&mut f, &terrain, true)?;
+
+    if opt.dual {
+        let dual = terrain.dual();
+
+        let dual_output = opt.output.with_file_name(format!(
+            "{}-dual.{}",
+            opt.output
+                .file_stem()
+                .map_or_else(|| "terrain".into(), |oss| oss.to_string_lossy()),
+            opt.output
+                .extension()
+                .map_or_else(|| "obj".into(), |oss| oss.to_string_lossy()),
+        ));
+
+        let mut f = BufWriter::new(File::create(dual_output)?);
+        dump(&mut f, &dual, true)?;
+    }
+
+    Ok(())
 }
 
 pub fn dump(w: &mut impl Write, terrain: &Terrain, support: bool) -> io::Result<()> {
