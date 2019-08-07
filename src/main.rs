@@ -18,11 +18,11 @@ pub struct App {
     output: PathBuf,
 
     /// The width of the final terrain as in number of vertices.
-    #[structopt(short, long, default_value = "200")]
+    #[structopt(short, long, default_value = "51")]
     width: u16,
 
     /// The depth of the final terrain as in number of vertices.
-    #[structopt(short, long, default_value = "200")]
+    #[structopt(short, long, default_value = "51")]
     depth: u16,
 
     /// The maximum height of the terrain.
@@ -33,6 +33,18 @@ pub struct App {
     /// inspecting the obj file.
     #[structopt(short, long)]
     seed: Option<u64>,
+
+    #[structopt(long, default_value = "0.5")]
+    lacunarity: f32,
+
+    #[structopt(long, default_value = "4")]
+    octaves: u8,
+
+    #[structopt(long, default_value = "2.0")]
+    gain: f32,
+
+    #[structopt(long, default_value = "0.2")]
+    frequency: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -47,10 +59,14 @@ pub struct Terrain {
 impl Terrain {
     pub fn generate(
         App {
-            width,
-            depth,
             amplitude,
+            depth,
+            frequency,
+            gain,
+            lacunarity,
+            octaves,
             seed,
+            width,
             ..
         }: &App,
     ) -> Self {
@@ -72,7 +88,11 @@ impl Terrain {
 
         let mut noise_config =
             NoiseBuilder::fbm_2d_offset(width_offset, width, depth_offset, depth);
-        noise_config.with_octaves(4).with_freq(0.2);
+        noise_config
+            .with_octaves(*octaves)
+            .with_freq(*frequency)
+            .with_gain(*gain)
+            .with_lacunarity(*lacunarity);
 
         let heights = noise_config.generate_scaled(0.0, *amplitude);
 
