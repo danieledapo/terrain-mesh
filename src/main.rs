@@ -65,9 +65,14 @@ pub struct RandomConfig {
     #[structopt(long, default_value = "0.2")]
     frequency: f32,
 
-    /// The maximum height of the terrain.
+    /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
+    /// a potential maximum height of `base-thickness` + `amplitude`.
     #[structopt(short, long, default_value = "20")]
     amplitude: f32,
+
+    /// The thickness of the base upon which the terrain is generated.
+    #[structopt(long = "base-thickness", default_value = "0.0")]
+    base_thickness: f32,
 }
 
 #[derive(StructOpt)]
@@ -76,13 +81,14 @@ pub struct HeightmapConfig {
     #[structopt(parse(from_os_str))]
     grayscale_heightmap: PathBuf,
 
-    /// The maximum height of the terrain.
+    /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
+    /// a potential maximum height of `base-thickness` + `amplitude`.
     #[structopt(short, long, default_value = "20")]
     amplitude: f32,
 
-    /// The minimum height of the terrain.
-    #[structopt(long = "min-amplitude", default_value = "0.0")]
-    min_amplitude: f32,
+    /// The thickness of the base upon which the terrain is generated.
+    #[structopt(long = "base-thickness", default_value = "0.0")]
+    base_thickness: f32,
 
     /// How much to smooth the grayscale image before turning it into a mesh. Smoothing is
     /// performed via a Gaussian blur.
@@ -110,6 +116,7 @@ impl Terrain {
     pub fn generate(
         RandomConfig {
             amplitude,
+            base_thickness,
             depth,
             frequency,
             gain,
@@ -117,7 +124,6 @@ impl Terrain {
             octaves,
             seed,
             width,
-            ..
         }: &RandomConfig,
     ) -> Self {
         // it seems there isn't a way to automatically randomize the noise functions, revert to
@@ -144,7 +150,7 @@ impl Terrain {
             .with_gain(*gain)
             .with_lacunarity(*lacunarity);
 
-        let heights = noise_config.generate_scaled(0.0, *amplitude);
+        let heights = noise_config.generate_scaled(*base_thickness, base_thickness + *amplitude);
 
         Terrain {
             depth,
@@ -158,8 +164,8 @@ impl Terrain {
     pub fn from_heightmap(
         HeightmapConfig {
             amplitude,
+            base_thickness,
             grayscale_heightmap,
-            min_amplitude,
             smoothness,
         }: &HeightmapConfig,
     ) -> image::ImageResult<Self> {
@@ -178,7 +184,7 @@ impl Terrain {
             let y = usize::try_from(y).unwrap();
             let i = (depth - 1 - y) * width + x;
 
-            heights[i] = min_amplitude + f32::from(p.0[0]) / 255.0 * amplitude;
+            heights[i] = base_thickness + f32::from(p.0[0]) / 255.0 * amplitude;
         }
 
         Ok(Terrain {
