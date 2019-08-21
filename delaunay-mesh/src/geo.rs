@@ -2,8 +2,8 @@ use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Vec2 {
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -14,8 +14,8 @@ pub struct Bbox {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Circle {
-    center: Vec2,
-    radius: f64,
+    pub center: Vec2,
+    pub radius: f64,
 }
 
 impl Vec2 {
@@ -45,26 +45,64 @@ impl Vec2 {
 }
 
 impl Bbox {
+    pub fn min(&self) -> Vec2 {
+        self.min
+    }
+
+    pub fn max(&self) -> Vec2 {
+        self.max
+    }
+
     pub fn center(&self) -> Vec2 {
-        unimplemented!()
+        (self.min + self.max) / 2.0
     }
 
     pub fn split(&self, p: Vec2) -> [Bbox; 4] {
-        unimplemented!()
+        debug_assert!(self.contains(p));
+
+        [
+            Bbox {
+                min: self.min,
+                max: p,
+            },
+            Bbox {
+                min: Vec2::new(p.x, self.min.y),
+                max: Vec2::new(self.max.x, p.y),
+            },
+            Bbox {
+                min: Vec2::new(self.min.x, p.y),
+                max: Vec2::new(p.x, self.max.y),
+            },
+            Bbox {
+                min: p,
+                max: self.max,
+            },
+        ]
     }
 
     pub fn expand(&mut self, p: Vec2) {
-        unimplemented!()
+        self.min.x = self.min.x.min(p.x);
+        self.min.y = self.min.y.min(p.y);
+
+        self.max.x = self.max.x.max(p.x);
+        self.max.y = self.max.y.max(p.y);
     }
 
     pub fn contains(&self, p: Vec2) -> bool {
-        unimplemented!()
+        self.min.x <= p.x && self.min.y <= p.y && self.max.x >= p.x && self.max.y >= p.y
     }
 }
 
 impl Circle {
     pub fn new(center: Vec2, radius: f64) -> Self {
         Circle { center, radius }
+    }
+
+    pub fn circumcircle(a: Vec2, b: Vec2, c: Vec2) -> Self {
+        //
+        // TODO
+        //
+        unimplemented!()
     }
 
     pub fn contains(&self, p: Vec2) -> bool {
@@ -82,12 +120,32 @@ impl Add for Vec2 {
     }
 }
 
+impl Add<f64> for Vec2 {
+    type Output = Vec2;
+
+    fn add(mut self, rhs: f64) -> Self::Output {
+        self.x += rhs;
+        self.y += rhs;
+        self
+    }
+}
+
 impl Sub for Vec2 {
     type Output = Vec2;
 
     fn sub(mut self, rhs: Vec2) -> Self::Output {
         self.x -= rhs.x;
         self.y -= rhs.y;
+        self
+    }
+}
+
+impl Sub<f64> for Vec2 {
+    type Output = Vec2;
+
+    fn sub(mut self, rhs: f64) -> Self::Output {
+        self.x -= rhs;
+        self.y -= rhs;
         self
     }
 }
@@ -102,12 +160,32 @@ impl Mul for Vec2 {
     }
 }
 
+impl Mul<f64> for Vec2 {
+    type Output = Vec2;
+
+    fn mul(mut self, rhs: f64) -> Self::Output {
+        self.x *= rhs;
+        self.y *= rhs;
+        self
+    }
+}
+
 impl Div for Vec2 {
     type Output = Vec2;
 
     fn div(mut self, rhs: Vec2) -> Self::Output {
         self.x /= rhs.x;
         self.y /= rhs.y;
+        self
+    }
+}
+
+impl Div<f64> for Vec2 {
+    type Output = Vec2;
+
+    fn div(mut self, rhs: f64) -> Self::Output {
+        self.x /= rhs;
+        self.y /= rhs;
         self
     }
 }

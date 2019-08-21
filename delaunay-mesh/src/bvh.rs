@@ -5,17 +5,6 @@ pub struct Bvh<Elem> {
     pub root: BvhNode<Elem>,
 }
 
-impl<Elem> Bvh<Elem> {
-    pub fn new(bbox: Bbox) -> Self {
-        Bvh {
-            root: BvhNode::Leaf {
-                elems: Vec::with_capacity(64),
-                bbox,
-            },
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum BvhNode<Elem> {
     Leaf {
@@ -26,6 +15,29 @@ pub enum BvhNode<Elem> {
         bbox: Bbox,
         children: Box<[BvhNode<Elem>; 4]>,
     },
+}
+
+impl<Elem> Bvh<Elem> {
+    pub fn new(bbox: Bbox) -> Self {
+        Bvh {
+            root: BvhNode::Leaf {
+                elems: Vec::with_capacity(64),
+                bbox,
+            },
+        }
+    }
+
+    pub fn insert(&mut self, e: Elem, refpoint: Vec2) {
+        self.root.insert(e, refpoint);
+    }
+
+    pub fn enclosing(
+        &self,
+        refpoint: Vec2,
+        contains: impl Fn(&Elem, Vec2) -> bool,
+    ) -> impl Iterator<Item = &Elem> {
+        self.root.enclosing(refpoint, contains)
+    }
 }
 
 impl<Elem> BvhNode<Elem> {
