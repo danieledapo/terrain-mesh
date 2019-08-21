@@ -1,9 +1,17 @@
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
 #[derive(Debug)]
 pub struct Arena<T> {
-    data: Vec<T>,
+    data: Vec<Node<T>>,
+    first_free: Option<usize>,
+}
+
+#[derive(Debug)]
+enum Node<T> {
+    Free { next_free: Option<usize> },
+    Occupied(T),
 }
 
 #[derive(Debug)]
@@ -14,25 +22,69 @@ pub struct ArenaId<Tag> {
 
 impl<T> Arena<T> {
     pub fn new() -> Self {
-        Arena { data: vec![] }
+        Arena {
+            data: vec![],
+            first_free: None,
+        }
     }
 
     pub fn push(&mut self, v: T) -> ArenaId<T> {
-        self.data.push(v);
-        ArenaId::new(self.data.len() - 1)
+        match self.first_free {
+            None => {
+                self.data.push(Node::Occupied(v));
+                ArenaId::new(self.data.len() - 1)
+            }
+            Some(f) => {
+                match self.data[f] {
+                    Node::Free { next_free } => {
+                        self.first_free = next_free;
+                    }
+                    Node::Occupied(_) => panic!("bug"),
+                };
+
+                self.data[f] = Node::Occupied(v);
+                ArenaId::new(f)
+            }
+        }
     }
 
-    pub fn replace(&mut self, id: ArenaId<T>, mut v: T) -> T {
-        std::mem::swap(&mut self[id], &mut v);
-        v
+    pub fn remove(&mut self, id: ArenaId<T>) -> Option<T> {
+        match self.data.get_mut(id.ix)? {
+            cell @ Node::Occupied(_) => {
+                let mut out = Node::Free {
+                    next_free: self.first_free,
+                };
+
+                std::mem::swap(&mut out, cell);
+                self.first_free = Some(id.ix);
+
+                match out {
+                    Node::Occupied(t) => Some(t),
+                    Node::Free { .. } => unreachable!(),
+                }
+            }
+            Node::Free { .. } => None,
+        }
     }
 
     pub fn get(&self, id: ArenaId<T>) -> Option<&T> {
-        self.data.get(id.ix)
+        match self.data.get(id.ix)? {
+            Node::Occupied(t) => Some(t),
+            Node::Free { .. } => None,
+        }
     }
 
     pub fn get_mut(&mut self, id: ArenaId<T>) -> Option<&mut T> {
-        self.data.get_mut(id.ix)
+        match self.data.get_mut(id.ix)? {
+            Node::Occupied(t) => Some(t),
+            Node::Free { .. } => None,
+        }
+    }
+}
+
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Arena::new()
     }
 }
 
@@ -66,5 +118,21 @@ impl<T> Clone for ArenaId<T> {
             ix: self.ix,
             tag: self.tag,
         }
+    }
+}
+
+impl<T> Eq for ArenaId<T> {}
+impl<T> PartialEq for ArenaId<T> {
+    fn eq(&self, rhs: &ArenaId<T>) -> bool {
+        self.ix == rhs.ix
+    }
+}
+
+impl<T> Hash for ArenaId<T> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.ix.hash(state);
     }
 }
