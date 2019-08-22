@@ -1,18 +1,18 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Vec2 {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Bbox {
     min: Vec2,
     max: Vec2,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Circle {
     pub center: Vec2,
     pub radius: f64,
@@ -45,6 +45,10 @@ impl Vec2 {
 }
 
 impl Bbox {
+    pub fn new(p: Vec2) -> Self {
+        Bbox { min: p, max: p }
+    }
+
     pub fn min(&self) -> Vec2 {
         self.min
     }
@@ -99,14 +103,19 @@ impl Circle {
     }
 
     pub fn circumcircle(a: Vec2, b: Vec2, c: Vec2) -> Self {
-        //
-        // TODO
-        //
-        unimplemented!()
+        // https://en.wikipedia.org/wiki/Circumscribed_circle#Cartesian_coordinates_2
+        let b = b - a;
+        let c = c - a;
+
+        let d = 2.0 * (b.x * c.y - b.y * c.x);
+        let x = (c.y * (b.x.powi(2) + b.y.powi(2)) - b.y * (c.x.powi(2) + c.y.powi(2))) / d;
+        let y = (b.x * (c.x.powi(2) + c.y.powi(2)) - c.x * (b.x.powi(2) + b.y.powi(2))) / d;
+
+        Circle::new(a + Vec2::new(x, y), Vec2::new(x, y).norm())
     }
 
     pub fn contains(&self, p: Vec2) -> bool {
-        self.center.dist(p) <= self.radius
+        self.center.dist(p) - self.radius <= 1e-6
     }
 }
 
@@ -188,4 +197,27 @@ impl Div<f64> for Vec2 {
         self.y /= rhs;
         self
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_circumcircle() {
+        assert_eq!(
+            Circle::circumcircle(Vec2::zero(), Vec2::new(3.0, 4.0), Vec2::new(0.0, 4.0)),
+            Circle::new(Vec2::new(1.5, 2.0), 2.5)
+        );
+
+        assert_eq!(
+            Circle::circumcircle(
+                Vec2::new(1.0, 1.0),
+                Vec2::new(4.0, 5.0),
+                Vec2::new(1.0, 5.0)
+            ),
+            Circle::new(Vec2::new(2.5, 3.0), 2.5)
+        );
+    }
+
 }
