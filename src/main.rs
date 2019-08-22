@@ -126,29 +126,24 @@ impl Terrain {
             width,
         }: &RandomConfig,
     ) -> Self {
-        // it seems there isn't a way to automatically randomize the noise functions, revert to
-        // simply looking at different areas in the noise space.
         let seed = seed.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .expect("time drift detected, aborting")
                 .as_secs()
         });
-
-        let mut rng = Pcg32::seed_from_u64(seed);
-        let width_offset = rng.gen_range(-f32::from(width / 2), f32::from(width / 2));
-        let depth_offset = rng.gen_range(-f32::from(depth / 2), f32::from(depth / 2));
+        let noise_seed = Pcg32::seed_from_u64(seed).gen::<i32>();
 
         let width = usize::from(*width);
         let depth = usize::from(*depth);
 
-        let mut noise_config =
-            NoiseBuilder::fbm_2d_offset(width_offset, width, depth_offset, depth);
+        let mut noise_config = NoiseBuilder::fbm_2d(width, depth);
         noise_config
             .with_octaves(*octaves)
             .with_freq(*frequency)
             .with_gain(*gain)
-            .with_lacunarity(*lacunarity);
+            .with_lacunarity(*lacunarity)
+            .with_seed(noise_seed);
 
         let heights = noise_config.generate_scaled(*base_thickness, base_thickness + *amplitude);
 

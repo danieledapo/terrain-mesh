@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "simdnoise"
-version = "3.0.1"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "simdeez 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -528,7 +528,7 @@ dependencies = [
  "image 0.22.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_pcg 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "simdnoise 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "simdnoise 3.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -658,7 +658,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 "checksum simdeez 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4204ae48b2a871f428dc20426f005be250413fa6263e6f3d93094a36b29504dc"
-"checksum simdnoise 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "045a68deca2fbfec8e978a02fe74c8fcab44468ac50447a584572041d1ae683e"
+"checksum simdnoise 3.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "86a9e4c1c3369eab7105ac7e1582a601942fed0a63877cb2e1afcf57f34ed7b3"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 "checksum structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "16c2cdbf9cc375f15d1b4141bc48aeef444806655cd0e904207edc8d68d86ed7"
 "checksum structopt-derive 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "53010261a84b37689f9ed7d395165029f9cc7abb9f56bbfe86bee2597ed25107"
