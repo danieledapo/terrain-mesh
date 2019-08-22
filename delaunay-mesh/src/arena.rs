@@ -80,6 +80,13 @@ impl<T> Arena<T> {
             Node::Free { .. } => None,
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.data.iter().filter_map(|n| match n {
+            Node::Occupied(t) => Some(t),
+            Node::Free { .. } => None,
+        })
+    }
 }
 
 impl<T> Default for Arena<T> {
