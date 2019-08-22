@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+use std::io;
+use std::io::Write;
 
 use crate::arena::{Arena, ArenaId};
 use crate::bvh::Bvh;
@@ -9,6 +11,10 @@ pub struct DelaunayMesh {
     triangles: Arena<Triangle>,
     vertices: Arena<Vertex>,
     triangles_index: Bvh<ArenaId<Triangle>>,
+
+    // bbox of the points that are to be inserted in the mesh. Doesn't take into account the
+    // padding for the initial super triangles.
+    input_bbox: Bbox,
 }
 
 #[derive(Debug)]
@@ -30,7 +36,7 @@ pub struct Roi {
 
 impl DelaunayMesh {
     pub fn new(mut bbox: Bbox) -> Self {
-        let _input_bbox = bbox;
+        let input_bbox = bbox;
 
         // add a bit of padding to account for the super triangles and to avoid degenerate
         // triangles.
@@ -41,6 +47,7 @@ impl DelaunayMesh {
             triangles: Arena::new(),
             vertices: Arena::new(),
             triangles_index: Bvh::new(bbox),
+            input_bbox,
         };
 
         let mut add_super_triangle = |a, b, c| {
@@ -59,9 +66,14 @@ impl DelaunayMesh {
         dm
     }
 
-    // pub fn triangles(&self) -> impl Iterator<Item = &Triangle> {
-    //     // NOTE: exclude super triangles' children
-    // }
+    pub fn triangles(&self) -> impl Iterator<Item = &Triangle> {
+        // exclude initial super triangles
+        self.triangles.iter().filter(move |t| {
+            t.vertices
+                .iter()
+                .all(|v| self.input_bbox.contains(self.vertices[*v].position))
+        })
+    }
 
     pub fn insert(&mut self, p: Vec2) -> Roi {
         //
@@ -108,15 +120,13 @@ impl DelaunayMesh {
             let tri = &self.triangles[*tri];
 
             for v in 0..tri.vertices.len() {
-                let edge = (tri.vertices[v], tri.vertices[(v + 1) % tri.vertices.len()]);
+                let e0 = (tri.vertices[v], tri.vertices[(v + 1) % tri.vertices.len()]);
+                let e1 = (e0.1, e0.0);
 
-                if !boundary.insert(edge) {
-                    boundary.remove(&edge);
-                }
-
-                let edge = (edge.1, edge.0);
-                if !boundary.insert(edge) {
-                    boundary.remove(&edge);
+                for edge in &[e0, e1] {
+                    if !boundary.insert(*edge) {
+                        boundary.remove(edge);
+                    }
                 }
             }
         }
@@ -161,4 +171,32 @@ impl Vertex {
     pub fn new(position: Vec2) -> Self {
         Vertex { position }
     }
+}
+
+pub fn dump_svg(out: &mut impl Write, dmesh: &DelaunayMesh) -> io::Result<()> {
+    writeln!(
+        out,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="{} {} {} {}">
+             "#,
+        dmesh.input_bbox.min().x,
+        dmesh.input_bbox.min().y,
+        dmesh.input_bbox.max().x - dmesh.input_bbox.min().x,
+        dmesh.input_bbox.max().y - dmesh.input_bbox.min().y,
+    )?;
+
+    for tri in dmesh.triangles() {
+        let a = dmesh.vertices[tri.vertices[0]].position;
+        let b = dmesh.vertices[tri.vertices[1]].position;
+        let c = dmesh.vertices[tri.vertices[2]].position;
+
+        writeln!(
+            out,
+            r#"<polygon points="{},{} {},{} {},{}" fill="none" stroke="black" />"#,
+            a.x, a.y, b.x, b.y, c.x, c.y
+        )?;
+    }
+
+    writeln!(out, "</svg>")
 }
