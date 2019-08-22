@@ -50,18 +50,16 @@ impl DelaunayMesh {
             input_bbox,
         };
 
-        let mut add_super_triangle = |a, b, c| {
-            let va = dm.vertices.push(Vertex::new(a));
-            let vb = dm.vertices.push(Vertex::new(b));
-            let vc = dm.vertices.push(Vertex::new(c));
-
-            dm.insert_triangle(va, vb, vc);
-        };
-
         let min = bbox.min();
         let max = bbox.max();
-        add_super_triangle(min, max, Vec2::new(min.y, max.x));
-        add_super_triangle(max, min, Vec2::new(min.x, max.y));
+
+        let tl = dm.vertices.push(Vertex::new(min));
+        let tr = dm.vertices.push(Vertex::new(Vec2::new(max.x, min.y)));
+        let bl = dm.vertices.push(Vertex::new(Vec2::new(min.x, max.y)));
+        let br = dm.vertices.push(Vertex::new(max));
+
+        dm.insert_triangle(tl, br, tr);
+        dm.insert_triangle(br, tl, bl);
 
         dm
     }
