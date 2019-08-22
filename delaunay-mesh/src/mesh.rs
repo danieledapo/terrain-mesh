@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::io;
 use std::io::Write;
 
@@ -105,43 +105,22 @@ impl DelaunayMesh {
         // inside the circumcircles of both triangles.
         //
 
-        let bad_tris = self
+        let enclosing_triangles = self
             .triangles_index
             .enclosing(p, |&tid, p| self.triangles[tid].circumcircle.contains(p))
             .cloned()
             .collect::<Vec<_>>();
 
-        // the boundary of the roi is the set of the outer edges that are not shared among the
-        // enclosing triangles
-        let mut boundary = HashSet::new();
-        for tri in &bad_tris {
-            let tri = &self.triangles[*tri];
+        let boundary = self.triangles_boundary(&enclosing_triangles);
 
-            for v in 0..tri.vertices.len() {
-                let e0 = (tri.vertices[v], tri.vertices[(v + 1) % tri.vertices.len()]);
-                let e1 = (e0.1, e0.0);
-
-                for edge in &[e0, e1] {
-                    if !boundary.insert(*edge) {
-                        boundary.remove(edge);
-                    }
-                }
-            }
-        }
-
-        for tri in bad_tris {
-            let refpoint = self.triangles[tri].circumcircle.center;
-            self.triangles_index.remove(&tri, refpoint);
-            self.triangles.remove(tri);
+        for tri in &enclosing_triangles {
+            self.remove_triangle(*tri);
         }
 
         let vp = self.vertices.push(Vertex::new(p));
-
-        let mut roi = Vec::with_capacity(boundary.len());
-        for (v0, v1) in boundary {
-            let tri = self.insert_triangle(v0, v1, vp);
-            roi.push(tri);
-        }
+        let roi = boundary
+            .map(|(v0, v1)| self.insert_triangle(v0, v1, vp))
+            .collect();
 
         Roi { triangles: roi }
     }
@@ -164,6 +143,49 @@ impl DelaunayMesh {
 
         self.triangles_index.insert(tri, circumcircle.center);
         tri
+    }
+
+    fn remove_triangle(&mut self, tri: ArenaId<Triangle>) {
+        let refpoint = self.triangles[tri].circumcircle.center;
+        self.triangles_index.remove(&tri, refpoint);
+        self.triangles.remove(tri);
+    }
+
+    fn triangles_boundary<'t>(
+        &self,
+        triangles: impl IntoIterator<Item = &'t ArenaId<Triangle>>,
+    ) -> impl Iterator<Item = (ArenaId<Vertex>, ArenaId<Vertex>)> {
+        use std::collections::hash_map::Entry;
+
+        //
+        // the boundary of the roi is the set of the outer edges that are not shared among the
+        // enclosing triangles
+        //
+        let mut boundary = HashMap::new();
+
+        for tri in triangles.into_iter() {
+            let tri = &self.triangles[*tri];
+
+            for v in 0..tri.vertices.len() {
+                let edge = (tri.vertices[v], tri.vertices[(v + 1) % tri.vertices.len()]);
+
+                let entry = match boundary.entry(edge) {
+                    // be sure to also check the opposite edge
+                    Entry::Vacant(_) => {
+                        let eo = (edge.1, edge.0);
+                        boundary.entry(eo)
+                    }
+                    o @ Entry::Occupied(_) => o,
+                };
+
+                entry.and_modify(|shared| *shared = true).or_insert(false);
+            }
+        }
+
+        boundary
+            .into_iter()
+            .filter(|(_, shared)| !*shared)
+            .map(|(edge, _)| edge)
     }
 }
 
