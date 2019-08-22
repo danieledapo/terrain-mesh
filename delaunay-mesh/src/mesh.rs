@@ -130,6 +130,8 @@ impl DelaunayMesh {
         }
 
         for tri in bad_tris {
+            let refpoint = self.triangles[tri].circumcircle.center;
+            self.triangles_index.remove(&tri, refpoint);
             self.triangles.remove(tri);
         }
 
@@ -144,7 +146,7 @@ impl DelaunayMesh {
         Roi { triangles: roi }
     }
 
-    pub fn insert_triangle(
+    fn insert_triangle(
         &mut self,
         va: ArenaId<Vertex>,
         vb: ArenaId<Vertex>,
