@@ -31,6 +31,13 @@ impl<Elem> Bvh<Elem> {
         self.root.insert(e, refpoint);
     }
 
+    pub fn remove(&mut self, e: &Elem, refpoint: Vec2)
+    where
+        Elem: Eq,
+    {
+        self.root.remove(e, refpoint)
+    }
+
     pub fn enclosing(
         &self,
         refpoint: Vec2,
@@ -90,6 +97,24 @@ impl<Elem> BvhNode<Elem> {
                     if child.contains(refpoint) {
                         child.insert(e, refpoint);
                         break;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn remove(&mut self, e: &Elem, refpoint: Vec2)
+    where
+        Elem: Eq,
+    {
+        match self {
+            BvhNode::Leaf { elems, .. } => {
+                elems.retain(|(ee, _)| ee != e);
+            }
+            BvhNode::Branch { children, .. } => {
+                for child in children.iter_mut() {
+                    if child.contains(refpoint) {
+                        child.remove(e, refpoint);
                     }
                 }
             }
