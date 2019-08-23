@@ -82,8 +82,12 @@ impl<T> Arena<T> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.data.iter().filter_map(|n| match n {
-            Node::Occupied(t) => Some(t),
+        self.enumerate().map(|(_, n)| n)
+    }
+
+    pub fn enumerate(&self) -> impl Iterator<Item = (ArenaId<T>, &T)> {
+        self.data.iter().enumerate().filter_map(|(i, n)| match n {
+            Node::Occupied(t) => Some((ArenaId::new(i), t)),
             Node::Free { .. } => None,
         })
     }
