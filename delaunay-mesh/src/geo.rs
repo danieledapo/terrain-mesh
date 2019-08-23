@@ -99,8 +99,41 @@ impl Bbox {
         self.max.y = self.max.y.max(p.y);
     }
 
+    pub fn enlarge(&mut self, amount: f64) {
+        self.min.x -= amount;
+        self.min.y -= amount;
+
+        self.max.x += amount;
+        self.max.y += amount;
+    }
+
     pub fn contains(&self, p: Vec2) -> bool {
         self.min.x <= p.x && self.min.y <= p.y && self.max.x >= p.x && self.max.y >= p.y
+    }
+
+    pub fn intersection(&self, other: Bbox) -> Option<Bbox> {
+        let min_x = self.min.x.max(other.min.x);
+        let min_y = self.min.y.max(other.min.y);
+        let max_x = self.max.x.min(other.max.x);
+        let max_y = self.max.y.min(other.max.y);
+
+        if min_x > max_x || min_y > max_y {
+            None
+        } else {
+            Some(Bbox {
+                min: Vec2::new(min_x, min_y),
+                max: Vec2::new(max_x, max_y),
+            })
+        }
+    }
+
+    pub fn dimensions(&self) -> Vec2 {
+        self.max - self.min
+    }
+
+    pub fn area(&self) -> f64 {
+        let d = self.dimensions();
+        d.x * d.y
     }
 }
 
@@ -124,6 +157,14 @@ impl Circle {
     pub fn contains(&self, p: Vec2) -> bool {
         self.center.dist(p) - self.radius <= 1e-6
     }
+
+    pub fn bbox(&self) -> Bbox {
+        let mut b = Bbox::new(self.center);
+        b.enlarge(self.radius);
+        b
+    }
+}
+
 impl BarycentricCoords {
     pub fn triangle([a, b, c]: [Vec2; 3], p: Vec2) -> Option<Self> {
         let d = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
