@@ -200,18 +200,17 @@ pub fn dump_svg(out: &mut impl Write, dmesh: &DelaunayMesh) -> io::Result<()> {
         out,
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="{} {} {} {}">
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="{x} {y} {w} {h}">
+<rect x="{x}" y="{y}" width="{w}" height="{h}" stroke="none" fill="white" />
              "#,
-        dmesh.input_bbox.min().x,
-        dmesh.input_bbox.min().y,
-        dmesh.input_bbox.max().x - dmesh.input_bbox.min().x,
-        dmesh.input_bbox.max().y - dmesh.input_bbox.min().y,
+        x = dmesh.input_bbox.min().x,
+        y = dmesh.input_bbox.min().y,
+        w = dmesh.input_bbox.max().x - dmesh.input_bbox.min().x,
+        h = dmesh.input_bbox.max().y - dmesh.input_bbox.min().y,
     )?;
 
-    for tri in dmesh.triangles() {
-        let a = dmesh.vertices[tri.vertices[0]].position;
-        let b = dmesh.vertices[tri.vertices[1]].position;
-        let c = dmesh.vertices[tri.vertices[2]].position;
+    for (tri, _) in dmesh.triangles() {
+        let [a, b, c] = dmesh.triangle_vertices(tri);
 
         writeln!(
             out,
