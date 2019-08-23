@@ -18,6 +18,13 @@ pub struct Circle {
     pub radius: f64,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct BarycentricCoords {
+    w0: f64,
+    w1: f64,
+    w2: f64,
+}
+
 impl Vec2 {
     pub fn zero() -> Self {
         Vec2::new(0.0, 0.0)
@@ -116,6 +123,28 @@ impl Circle {
 
     pub fn contains(&self, p: Vec2) -> bool {
         self.center.dist(p) - self.radius <= 1e-6
+    }
+impl BarycentricCoords {
+    pub fn triangle([a, b, c]: [Vec2; 3], p: Vec2) -> Option<Self> {
+        let d = (b.y - c.y) * (a.x - c.x) + (c.x - b.x) * (a.y - c.y);
+
+        let w0 = ((b.y - c.y) * (p.x - c.x) + (c.x - b.x) * (p.y - c.y)) / d;
+        let w1 = ((c.y - a.y) * (p.x - c.x) + (a.x - c.x) * (p.y - c.y)) / d;
+        let w2 = 1.0 - w0 - w1;
+
+        if w0 + w1 + w2 > 1.0 {
+            None
+        } else {
+            Some(BarycentricCoords { w0, w1, w2 })
+        }
+    }
+
+    pub fn to_point(&self, triangle: [Vec2; 3]) -> Vec2 {
+        triangle[0] * self.w0 + triangle[1] * self.w1 + triangle[2] * self.w2
+    }
+
+    pub fn interpolate(&self, vals: [f64; 3]) -> f64 {
+        vals[0] * self.w0 + vals[1] * self.w1 + vals[2] * self.w2
     }
 }
 
