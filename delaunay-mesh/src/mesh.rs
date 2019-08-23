@@ -4,13 +4,16 @@ use std::io::Write;
 
 use crate::arena::{Arena, ArenaId};
 use crate::bvh::Bvh;
-use crate::geo::{Bbox, Circle, Vec2};
+use crate::geo::{BarycentricCoords, Bbox, Circle, Vec2};
+
+pub type TriangleId = ArenaId<Triangle>;
+pub type VertexId = ArenaId<Vertex>;
 
 #[derive(Debug)]
 pub struct DelaunayMesh {
     triangles: Arena<Triangle>,
     vertices: Arena<Vertex>,
-    triangles_index: Bvh<ArenaId<Triangle>>,
+    triangles_index: Bvh<TriangleId>,
 
     // bbox of the points that are to be inserted in the mesh. Doesn't take into account the
     // padding for the initial super triangles.
@@ -19,7 +22,7 @@ pub struct DelaunayMesh {
 
 #[derive(Debug)]
 pub struct Triangle {
-    vertices: [ArenaId<Vertex>; 3],
+    vertices: [VertexId; 3],
     circumcircle: Circle,
 }
 
@@ -28,20 +31,13 @@ pub struct Vertex {
     position: Vec2,
 }
 
-/// Region of interest that contains all the new/modified triangles after having inserted a point.
-#[derive(Debug)]
-pub struct Roi {
-    triangles: Vec<ArenaId<Triangle>>,
-}
-
 impl DelaunayMesh {
     pub fn new(mut bbox: Bbox) -> Self {
         let input_bbox = bbox;
 
         // add a bit of padding to account for the super triangles and to avoid degenerate
         // triangles.
-        bbox.expand(bbox.min() - 20.0);
-        bbox.expand(bbox.max() + 20.0);
+        bbox.enlarge(20.0);
 
         let mut dm = DelaunayMesh {
             triangles: Arena::new(),
@@ -64,16 +60,32 @@ impl DelaunayMesh {
         dm
     }
 
-    pub fn triangles(&self) -> impl Iterator<Item = &Triangle> {
+    pub fn triangles(&self) -> impl Iterator<Item = (TriangleId, &Triangle)> {
         // exclude initial super triangles
-        self.triangles.iter().filter(move |t| {
-            t.vertices
-                .iter()
-                .all(|v| self.input_bbox.contains(self.vertices[*v].position))
-        })
+        self.triangles
+            .enumerate()
+            .filter(move |(_, t)| !self.is_super_triangle(t))
     }
 
-    pub fn insert(&mut self, p: Vec2) -> Roi {
+    pub fn triangle_vertices(&self, id: TriangleId) -> [Vec2; 3] {
+        let vs = self.triangles[id].vertices;
+
+        [
+            self.vertices[vs[0]].position,
+            self.vertices[vs[1]].position,
+            self.vertices[vs[2]].position,
+        ]
+    }
+
+    pub fn enclosing_triangle(&self, p: Vec2) -> Option<&TriangleId> {
+        self.triangles_index
+            .enclosing(p, |t, p| {
+                BarycentricCoords::triangle(self.triangle_vertices(*t), p).is_some()
+            })
+            .next()
+    }
+
+    pub fn insert(&mut self, p: Vec2) {
         //
         // The idea here is to first find all the triangles whose circumcircle contains the new
         // point.
@@ -105,11 +117,24 @@ impl DelaunayMesh {
         // inside the circumcircles of both triangles.
         //
 
+        use std::collections::HashSet;
         let enclosing_triangles = self
             .triangles_index
             .enclosing(p, |&tid, p| self.triangles[tid].circumcircle.contains(p))
             .cloned()
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
+        // let enclosing_triangles2 = self
+        //     .triangles
+        //     .enumerate()
+        //     .filter_map(|(tid, t)| {
+        //         if t.circumcircle.contains(p) {
+        //             Some(tid)
+        //         } else {
+        //             None
+        //         }
+        //     })
+        //     .collect::<HashSet<_>>();
+        // assert_eq!(enclosing_triangles, enclosing_triangles2);
 
         let boundary = self.triangles_boundary(&enclosing_triangles);
 
@@ -118,19 +143,18 @@ impl DelaunayMesh {
         }
 
         let vp = self.vertices.push(Vertex::new(p));
-        let roi = boundary
-            .map(|(v0, v1)| self.insert_triangle(v0, v1, vp))
-            .collect();
-
-        Roi { triangles: roi }
+        for (v0, v1) in boundary {
+            self.insert_triangle(v0, v1, vp);
+        }
     }
 
-    fn insert_triangle(
-        &mut self,
-        va: ArenaId<Vertex>,
-        vb: ArenaId<Vertex>,
-        vc: ArenaId<Vertex>,
-    ) -> ArenaId<Triangle> {
+    fn is_super_triangle(&self, t: &Triangle) -> bool {
+        t.vertices
+            .iter()
+            .any(|v| !self.input_bbox.contains(self.vertices[*v].position))
+    }
+
+    fn insert_triangle(&mut self, va: VertexId, vb: VertexId, vc: VertexId) -> TriangleId {
         let a = self.vertices[va].position;
         let b = self.vertices[vb].position;
         let c = self.vertices[vc].position;
@@ -141,20 +165,21 @@ impl DelaunayMesh {
             circumcircle,
         });
 
-        self.triangles_index.insert(tri, circumcircle.center);
+        self.triangles_index.insert(tri, circumcircle.bbox());
         tri
     }
 
-    fn remove_triangle(&mut self, tri: ArenaId<Triangle>) {
-        let refpoint = self.triangles[tri].circumcircle.center;
-        self.triangles_index.remove(&tri, refpoint);
+    fn remove_triangle(&mut self, tri: TriangleId) {
+        self.triangles_index
+            .remove(&tri, self.triangles[tri].circumcircle.bbox());
+
         self.triangles.remove(tri);
     }
 
     fn triangles_boundary<'t>(
         &self,
-        triangles: impl IntoIterator<Item = &'t ArenaId<Triangle>>,
-    ) -> impl Iterator<Item = (ArenaId<Vertex>, ArenaId<Vertex>)> {
+        triangles: impl IntoIterator<Item = &'t TriangleId>,
+    ) -> impl Iterator<Item = (VertexId, VertexId)> {
         use std::collections::hash_map::Entry;
 
         //
