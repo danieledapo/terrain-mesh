@@ -6,12 +6,16 @@ edition = "2018"
 
 [workspace]
 members = [
-    "delaunay-mesh"
+    "scape"
 ]
 
 [dependencies]
+scape = { path = "./scape" }
 image = "0.22"
 rand = "0.7"
 rand_pcg = "0.2"
 simdnoise = "3.1"
 structopt = "0.2"
+
+[profile.release]
+# debug = true
