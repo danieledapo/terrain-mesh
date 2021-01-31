@@ -166,7 +166,7 @@ impl Terrain {
     ) -> image::ImageResult<Self> {
         use std::convert::TryFrom;
 
-        let img = image::open(grayscale_heightmap)?.to_luma();
+        let img = image::open(grayscale_heightmap)?.to_luma8();
         let img = image::imageops::blur(&img, *smoothness);
 
         let (width, depth) = img.dimensions();

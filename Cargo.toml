@@ -5,8 +5,8 @@ authors = ["Daniele D'Orazio <daniele@develer.com>"]
 edition = "2018"
 
 [dependencies]
-image = "0.22"
-rand = "0.7"
-rand_pcg = "0.2"
+image = "0.23"
+rand = "0.8"
+rand_pcg = "0.3"
 simdnoise = "3.1"
-structopt = "0.2"
+structopt = "0.3"
