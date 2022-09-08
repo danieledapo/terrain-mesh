@@ -8,91 +8,91 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::prelude::*;
 use rand_pcg::Pcg32;
 
+use clap::{Parser, Subcommand};
 use simdnoise::NoiseBuilder;
-use structopt::StructOpt;
 
 /// Generate a terrain mesh from a noise function or a heightmap. The final mesh should be ready to
 /// be 3d printed.
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub struct App {
     /// Output obj filename template.
-    #[structopt(short, long, parse(from_os_str), default_value = "terrain.obj")]
+    #[clap(short, long, parse(from_os_str), default_value = "terrain.obj")]
     output: PathBuf,
 
     /// Generate the dual of terrain too.
-    #[structopt(long)]
+    #[clap(long)]
     dual: bool,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     command: Command,
 }
 
-#[derive(StructOpt)]
+#[derive(Subcommand)]
 pub enum Command {
     /// Generate random terrain-like quad mesh using various types of noise functions.
-    #[structopt(name = "random")]
+    #[clap(name = "random")]
     Random(RandomConfig),
 
     /// Turn grayscale 8 bit heightmap into a mesh.
-    #[structopt(name = "heightmap")]
+    #[clap(name = "heightmap")]
     Heightmap(HeightmapConfig),
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub struct RandomConfig {
     /// The width of the final terrain as in number of vertices.
-    #[structopt(short, long, default_value = "51")]
+    #[clap(short, long, default_value = "51")]
     width: u16,
 
     /// The depth of the final terrain as in number of vertices.
-    #[structopt(short, long, default_value = "51")]
+    #[clap(short, long, default_value = "51")]
     depth: u16,
 
     /// The seed to use to generate the terrain. You can find the seed of a given terrain by
     /// inspecting the obj file.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     seed: Option<u64>,
 
-    #[structopt(long, default_value = "0.5")]
+    #[clap(long, default_value = "0.5")]
     lacunarity: f32,
 
-    #[structopt(long, default_value = "4")]
+    #[clap(long, default_value = "4")]
     octaves: u8,
 
-    #[structopt(long, default_value = "2.0")]
+    #[clap(long, default_value = "2.0")]
     gain: f32,
 
-    #[structopt(long, default_value = "0.2")]
+    #[clap(long, default_value = "0.2")]
     frequency: f32,
 
     /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
     /// a potential maximum height of `base-thickness` + `amplitude`.
-    #[structopt(short, long, default_value = "20")]
+    #[clap(short, long, default_value = "20")]
     amplitude: f32,
 
     /// The thickness of the base upon which the terrain is generated.
-    #[structopt(long = "base-thickness", default_value = "0.0")]
+    #[clap(long = "base-thickness", default_value = "0.0")]
     base_thickness: f32,
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 pub struct HeightmapConfig {
     /// Input grayscale heightmap.
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     grayscale_heightmap: PathBuf,
 
     /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
     /// a potential maximum height of `base-thickness` + `amplitude`.
-    #[structopt(short, long, default_value = "20")]
+    #[clap(short, long, default_value = "20")]
     amplitude: f32,
 
     /// The thickness of the base upon which the terrain is generated.
-    #[structopt(long = "base-thickness", default_value = "0.0")]
+    #[clap(long = "base-thickness", default_value = "0.0")]
     base_thickness: f32,
 
     /// How much to smooth the grayscale image before turning it into a mesh. Smoothing is
     /// performed via a Gaussian blur.
-    #[structopt(short, long, default_value = "0.3")]
+    #[clap(short, long, default_value = "0.3")]
     smoothness: f32,
 }
 
