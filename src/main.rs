@@ -16,83 +16,81 @@ use simdnoise::NoiseBuilder;
 #[derive(Parser)]
 pub struct App {
     /// Output obj filename template.
-    #[clap(short, long, parse(from_os_str), default_value = "terrain.obj")]
+    #[arg(short, long, default_value = "terrain.obj")]
     output: PathBuf,
 
     /// Generate the dual of terrain too.
-    #[clap(long)]
+    #[arg(long)]
     dual: bool,
 
-    #[clap(subcommand)]
+    #[command(subcommand)]
     command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
     /// Generate random terrain-like quad mesh using various types of noise functions.
-    #[clap(name = "random")]
     Random(RandomConfig),
 
     /// Turn grayscale 8 bit heightmap into a mesh.
-    #[clap(name = "heightmap")]
     Heightmap(HeightmapConfig),
 }
 
 #[derive(Parser)]
 pub struct RandomConfig {
     /// The width of the final terrain as in number of vertices.
-    #[clap(short, long, default_value = "51")]
+    #[arg(short, long, default_value = "51")]
     width: u16,
 
     /// The depth of the final terrain as in number of vertices.
-    #[clap(short, long, default_value = "51")]
+    #[arg(short, long, default_value = "51")]
     depth: u16,
 
     /// The seed to use to generate the terrain. You can find the seed of a given terrain by
     /// inspecting the obj file.
-    #[clap(short, long)]
+    #[arg(short, long)]
     seed: Option<u64>,
 
-    #[clap(long, default_value = "0.5")]
+    #[arg(long, default_value = "0.5")]
     lacunarity: f32,
 
-    #[clap(long, default_value = "4")]
+    #[arg(long, default_value = "4")]
     octaves: u8,
 
-    #[clap(long, default_value = "2.0")]
+    #[arg(long, default_value = "2.0")]
     gain: f32,
 
-    #[clap(long, default_value = "0.2")]
+    #[arg(long, default_value = "0.2")]
     frequency: f32,
 
     /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
     /// a potential maximum height of `base-thickness` + `amplitude`.
-    #[clap(short, long, default_value = "20")]
+    #[arg(short, long, default_value = "20")]
     amplitude: f32,
 
     /// The thickness of the base upon which the terrain is generated.
-    #[clap(long = "base-thickness", default_value = "0.0")]
+    #[arg(long = "base-thickness", default_value = "0.0")]
     base_thickness: f32,
 }
 
 #[derive(Parser)]
 pub struct HeightmapConfig {
     /// Input grayscale heightmap.
-    #[clap(parse(from_os_str))]
+    #[arg()]
     grayscale_heightmap: PathBuf,
 
     /// The maximum height of the terrain. If `base-thickness` is specified then the final mesh has
     /// a potential maximum height of `base-thickness` + `amplitude`.
-    #[clap(short, long, default_value = "20")]
+    #[arg(short, long, default_value = "20")]
     amplitude: f32,
 
     /// The thickness of the base upon which the terrain is generated.
-    #[clap(long = "base-thickness", default_value = "0.0")]
+    #[arg(long = "base-thickness", default_value = "0.0")]
     base_thickness: f32,
 
     /// How much to smooth the grayscale image before turning it into a mesh. Smoothing is
     /// performed via a Gaussian blur.
-    #[clap(short, long, default_value = "0.3")]
+    #[arg(short, long, default_value = "0.3")]
     smoothness: f32,
 }
 
@@ -247,7 +245,7 @@ impl Terrain {
 }
 
 fn main() -> image::ImageResult<()> {
-    let opt = App::from_args();
+    let opt = App::parse();
 
     let terrain = match opt.command {
         Command::Random(cfg) => Terrain::generate(&cfg),
